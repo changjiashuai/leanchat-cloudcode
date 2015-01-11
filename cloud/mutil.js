@@ -8,12 +8,17 @@ function doErr(err) {
 }
 
 function renderError(res, error) {
+  var _error;
   if (error == null) {
-    error = "Unknown error";
+    _error = "Unknown error";
   }
-  if (typeof error != 'string')
-    error = util.inspect(error);
-  res.render('500', {error: error});
+  if (typeof error != 'string'){
+    _error = util.inspect(error);
+    if(error.stack && !__production){
+      _error+=' stack='+error.stack;
+    }
+  }
+  res.render('500', {error: _error});
 }
 
 function renderErrorFn(res) {
@@ -49,8 +54,7 @@ function findOne(clzName, modifyQueryFn) {
 }
 
 function findAll(clzName, modifyQueryFn) {
-  var Clz = AV.Object.extend(clzName);
-  var q = new AV.Query(Clz);
+  var q = new AV.Query(clzName);
   var res = [];
   var p = new AV.Promise();
   if (modifyQueryFn) {
@@ -63,7 +67,7 @@ function findAll(clzName, modifyQueryFn) {
         var promises = [];
         for (var i = 0; i < t; i++) {
           var skip = i * 1000;
-          var q = new AV.Query(Clz);
+          var q = new AV.Query(clzName);
           q.ascending('createdAt');
           q.limit(1000);
           if (modifyQueryFn) {
@@ -136,7 +140,7 @@ function encrypt(s) {
 
 function cloudErrorFn(response) {
   return function (error) {
-    response.error("Error " + error.code + " : " + error.message);
+    response.error(error.message);
   };
 }
 

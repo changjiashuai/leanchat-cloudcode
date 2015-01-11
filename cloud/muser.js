@@ -3,6 +3,7 @@
  */
 var mutil = require('cloud/mutil');
 var mlog = require('cloud/mlog');
+var Avatar=AV.Object.extend('Avatar');
 
 function findUserById(userId) {
   var q = new AV.Query('_User');
@@ -17,6 +18,10 @@ function findUserByName(name) {
   return findUser(function (q) {
     q.equalTo('username', name);
   });
+}
+
+function findAllUsers(modifyQueryFn){
+  return mutil.findAll('_User',modifyQueryFn);
 }
 
 function findFriends(name) {
@@ -76,6 +81,39 @@ function removeFriendForBoth(fromUserId, toUserId) {
   return doRelationForBoth(fromUserId, toUserId, removeFriend);
 }
 
+function countAvatars(){
+  var q=new AV.Query(Avatar);
+  return q.count();
+}
+
+function findRandomAvatar(){
+  var p=new AV.Promise();
+  countAvatars().then(function(count){
+    var i=Math.floor(Math.random()*count);
+    var q=new AV.Query(Avatar);
+    q.skip(i);
+    q.limit(1);
+    q.ascending('createdAt');
+    q.first().then(function(avatar){
+      p.resolve(avatar);
+    },mutil.rejectFn(p));
+  },mutil.rejectFn(p));
+  return p;
+}
+
+function beforeSaveUser(req,res){
+  var user=req.object;
+  if(user.get('avatar')==null){
+    findRandomAvatar().then(function(avatar){
+      var url=avatar.get('file').url();
+      mlog.log('getFile '+url);
+      user.set('avatar',avatar.get('file'));
+      res.success();
+    },mutil.cloudErrorFn(res));
+  }else{
+    res.success();
+  }
+}
 
 exports.findUser = findUser;
 exports.findUserById = findUserById;
@@ -84,3 +122,7 @@ exports.removeFriend = removeFriend;
 exports.addFriendForBoth = addFriendForBoth;
 exports.removeFriendForBoth = removeFriendForBoth;
 exports.findFriends = findFriends;
+exports.findAllUsers=findAllUsers;
+exports.beforeSaveUser=beforeSaveUser;
+exports.findRandomAvatar=findRandomAvatar;
+
